@@ -1,4 +1,4 @@
-# NumericalMethodLowPassFilter
+# Numerical Method Low Pass Filter 
 
 ## Prologue
 

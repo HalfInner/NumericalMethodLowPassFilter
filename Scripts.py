@@ -8,7 +8,7 @@ from numpy.ma import arange
 low-pass filter
 _____[====]_R1____R2_[====]________________________
 |             |             |                     |
-|             |             |                 R3 ___
+|             |             |                 RL ___
 |             |             |                    | |
 e(t)          |             |                    | |
 |           ____ C1      ____ C2                 ---
@@ -29,18 +29,24 @@ def G_s(R1: float, R2: float, C1: float, C2: float, S: float):
     V_in = S ** 2 + S * (1 / (R1 * C1) + 1 / (R2 * C1) + 1 / (R2 * C2)) + 1 / (R1 * R2 * C2 * C1)
     return V_out / V_in
 
-
 def main():
-    milliseconds = 1000
-    samples = np.arange(milliseconds)
-
-    R1 = 1000.
+    # Data:
+    R1 = 1
     C1 = 0.032
+    R2 = 1
+    C2 = 0.032
+    RL = 1
 
-    plt.plot(n, faza)
-    plt.xlabel('sample')
-    plt.ylabel('kąt fazowy [rad]')
-    plt.title('Sygnał Fazowy')
+    step=0.001
+    time_vector = np.arange(start=0, stop=1, step=step, dtype=float)
+    # voltage_input_vector = np.ones((len(time_vector), 1)) * 2
+    f = 10
+    value_vector = np.sin(time_vector * 2 * np.pi * f)
+
+    # plt.plot(time_vector, voltage_input_vector)
+    plt.plot(time_vector, value_vector)
+    plt.xlabel('[s]')
+    plt.ylabel('[V]')
     plt.show()
 
 

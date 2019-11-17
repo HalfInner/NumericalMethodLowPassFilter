@@ -1,12 +1,8 @@
-from decimal import Decimal
-
 # import control as control
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy import transpose
 from scipy import signal
 
-from numpy.ma import arange
 
 '''
 low-pass filter
@@ -53,44 +49,73 @@ def G_s(R1: float, R2: float, C1: float, C2: float, step: float = None):
         [V_in_ss, V_in_s, V_in_c])
 
 
-def main():
-    # Data:
-    R1 = 1 * 1000
-    C1 = 0.032 / 1e6
-    R2 = 1 * 1000
-    C2 = 0.032 / 1e6
-    # RL = 1 * 1000
 
-    time = 0.001
-    time = 0.001
-    step = 0.00001
-    e_t = 2.
-    time_vector = np.arange(start=0, stop=time, step=step, dtype=float)
-    input_const_vec = np.ones_like(time_vector) * e_t
-    input_f_vec = np.sin(time_vector*2*np.pi*2000)
-    # input_const_vec = input_f_vec
-    input_vec = input_f_vec
-    system = G_s(R1, R2, C1, C2, None)
-    t_out, y_out_vec, x_out_vec = signal.lsim(system, input_vec, time_vector)
-    # t_out, y_out_vec, x_out_vec = signal.lsim(system, input_const_vec, time_vector)
-    # t_out, y_out_vec, x_out_vec = signal.lsim(system, input_const_vec, time_vector)
-
+def plot_results(input_vec, t_out, y_out_vec):
     plt.figure(0)
-    plt.plot(time_vector, input_vec, label='Input f=0')
-    plt.plot(time_vector, y_out_vec, label='Response f=0')
-
-    plt.ylim(bottom=-2., top=e_t * 1.1)
+    plt.plot(t_out, input_vec, label='Input f=0')
+    plt.plot(t_out, y_out_vec, label='Response f=0')
+    plt.ylim(bottom=np.min(input_vec) * 0.9, top=np.max(input_vec) * 1.1)
     plt.xlabel('[s]')
     plt.ylabel('[V]')
     plt.legend()
     plt.grid()
     plt.show()
 
-    # w, mag, phase = signal.bode(system)
-    # plt.figure(1)
-    # plt.plot(w, phase)
 
-    plt.show()
+def simulate_rlc_response(C1, C2, R1, R2, input_vec, time_vector):
+    system = G_s(R1, R2, C1, C2, None)
+    t_out, y_out_vec, x_out_vec = signal.lsim(system, input_vec, time_vector)
+    return t_out, y_out_vec
+
+
+def generate_rlc_parameters():
+    R1 = 1 * 1000
+    C1 = 0.032e-6
+    R2 = 1 * 1000
+    C2 = 0.032e-6
+    # RL = 1 * 1000
+    return C1, C2, R1, R2
+
+
+def generate_time_vec():
+    time = 0.001
+    time_vector = np.linspace(start=0, stop=time)
+    return time_vector
+
+
+def generate_input_vecs(time_vector):
+    e_t = 2.
+    input_const_vec = np.ones_like(time_vector) * e_t
+    f = 50
+    input_f_50_vec = np.sin(time_vector * 2 * np.pi * f)
+    f = 600
+    input_f_600_vec = np.sin(time_vector * 2 * np.pi * f)
+    f = 1.75e3
+    input_f_1_75k_vec = np.sin(time_vector * 2 * np.pi * f)
+    f = 12e3
+    input_f_12k_vec = np.sin(time_vector * 2 * np.pi * f)
+    f = 21e3
+    input_f_21k_vec = np.sin(time_vector * 2 * np.pi * f)
+    input_vecs = [input_const_vec,
+                  input_f_50_vec,
+                  input_f_600_vec,
+                  input_f_1_75k_vec,
+                  input_f_12k_vec,
+                  input_f_21k_vec]
+    return input_vecs
+
+
+def main():
+    # Data:
+    C1, C2, R1, R2 = generate_rlc_parameters()
+
+    time_vector = generate_time_vec()
+
+    input_vecs = generate_input_vecs(time_vector)
+
+    for input_vec in input_vecs:
+        t_out, y_out_vec = simulate_rlc_response(C1, C2, R1, R2, input_vec, time_vector)
+        plot_results(input_vec, t_out, y_out_vec)
 
 
 if __name__ == "__main__":

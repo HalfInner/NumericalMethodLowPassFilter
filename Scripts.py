@@ -4,36 +4,6 @@ import numpy as np
 from scipy import signal
 
 
-'''
-low-pass filter
-_____[====]_R1____R2_[====]________________________
-|             |             |                     |
-|             |             |                 RL ___
-|             |             |                    | |
-e(t)          |             |                    | |
-|           ____ C1      ____ C2                 ---
-|           ____          ____                    |
-|            |              |                     |
-|____________|______________|____________|________|
-'''
-
-'''
-
-du1/dt  = 1/C1(1/
-
-'''
-
-'''
-G(s)=\dfrac{V_{in}}{V_{out}}=
-\dfrac{
-    \dfrac{1}{
-        R_1R_2C_1C_2
-    }}{ s^2 + 
-        s\dfrac{1}{R_1C_1} + 
-        \dfrac{1}{R_2C_1} +
-        \dfrac{1}{R_2C_2} + 
-        \dfrac{1}{R_1R_2C_2C_1}}
-'''
 
 
 def G_s(R1: float, R2: float, C1: float, C2: float, step: float = None):

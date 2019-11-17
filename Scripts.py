@@ -4,8 +4,6 @@ import numpy as np
 from scipy import signal
 
 
-
-
 def G_s(R1: float, R2: float, C1: float, C2: float, step: float = None):
     V_out_ss = 0.
     V_out_s = 0.
@@ -19,22 +17,28 @@ def G_s(R1: float, R2: float, C1: float, C2: float, step: float = None):
         [V_in_ss, V_in_s, V_in_c])
 
 
+class StaticFigureEnumerator:
+    fig_num = 0
 
-def plot_results(input_vec, t_out, y_out_vec):
-    plt.figure(0)
-    plt.plot(t_out, input_vec, label='Input f=0')
-    plt.plot(t_out, y_out_vec, label='Response f=0')
-    plt.ylim(bottom=np.min(input_vec) * 0.9, top=np.max(input_vec) * 1.1)
-    plt.xlabel('[s]')
+
+def plot_results(input_vec, frequency, t_out, y_out_vec):
+    StaticFigureEnumerator.fig_num += 1
+    plt.figure(StaticFigureEnumerator.fig_num)
+
+    s_to_ms_scalar = 1e3
+    plt.plot(t_out * s_to_ms_scalar, input_vec, label='Input f={}Hz'.format(frequency))
+    plt.plot(t_out * s_to_ms_scalar, y_out_vec, label='Response')
+    plt.ylim(bottom=-2.1, top=2.1)
+    plt.xlabel('[ms]')
     plt.ylabel('[V]')
     plt.legend()
     plt.grid()
     plt.show()
 
 
-def simulate_rlc_response(C1, C2, R1, R2, input_vec, time_vector):
+def simulate_rlc_response(C1, C2, R1, R2, input_vec, time_vec):
     system = G_s(R1, R2, C1, C2, None)
-    t_out, y_out_vec, x_out_vec = signal.lsim(system, input_vec, time_vector)
+    t_out, y_out_vec, x_out_vec = signal.lsim(system, input_vec, time_vec)
     return t_out, y_out_vec
 
 
@@ -47,25 +51,50 @@ def generate_rlc_parameters():
     return C1, C2, R1, R2
 
 
-def generate_time_vec():
+def generate_time_vec(f):
     time = 0.001
-    time_vector = np.linspace(start=0, stop=time)
-    return time_vector
+    if f is not 0:
+        time = 2/f
+
+    step = 0.001
+    num = 1. / step
+    return np.linspace(start=0, stop=time, num=num)
 
 
-def generate_input_vecs(time_vector):
+def generate_input_frequency_vecs():
+    period = 2 * np.pi
+
+    # a)
+    f = 0
     e_t = 2.
-    input_const_vec = np.ones_like(time_vector) * e_t
+    time_vec = generate_time_vec(f)
+    input_const_vec = (np.ones_like(time_vec) * e_t, f, time_vec)
+
+    # b)
     f = 50
-    input_f_50_vec = np.sin(time_vector * 2 * np.pi * f)
+    time_vec = generate_time_vec(f)
+    input_f_50_vec = (np.sin(time_vec * period * f), f, time_vec)
+
+    # c)
     f = 600
-    input_f_600_vec = np.sin(time_vector * 2 * np.pi * f)
+    time_vec = generate_time_vec(f)
+    input_f_600_vec = (np.sin(time_vec * period * f), f, time_vec)
+
+    # d)
     f = 1.75e3
-    input_f_1_75k_vec = np.sin(time_vector * 2 * np.pi * f)
+    time_vec = generate_time_vec(f)
+    input_f_1_75k_vec = (np.sin(time_vec * period * f), f, time_vec)
+
+    # e)
     f = 12e3
-    input_f_12k_vec = np.sin(time_vector * 2 * np.pi * f)
+    time_vec = generate_time_vec(f)
+    input_f_12k_vec = (np.sin(time_vec * period * f), f, time_vec)
+
+    # f)
     f = 21e3
-    input_f_21k_vec = np.sin(time_vector * 2 * np.pi * f)
+    time_vec = generate_time_vec(f)
+    input_f_21k_vec = (np.sin(time_vec * period * f), f)
+
     input_vecs = [input_const_vec,
                   input_f_50_vec,
                   input_f_600_vec,
@@ -76,16 +105,10 @@ def generate_input_vecs(time_vector):
 
 
 def main():
-    # Data:
     C1, C2, R1, R2 = generate_rlc_parameters()
-
-    time_vector = generate_time_vec()
-
-    input_vecs = generate_input_vecs(time_vector)
-
-    for input_vec in input_vecs:
-        t_out, y_out_vec = simulate_rlc_response(C1, C2, R1, R2, input_vec, time_vector)
-        plot_results(input_vec, t_out, y_out_vec)
+    for input_vec, frequency, time_vec in generate_input_frequency_vecs():
+        t_out, y_out_vec = simulate_rlc_response(C1, C2, R1, R2, input_vec, time_vec)
+        plot_results(input_vec, frequency, t_out, y_out_vec)
 
 
 if __name__ == "__main__":

@@ -17,6 +17,6 @@ e(t)          |             |                    | |
 |____________|______________|____________|________|
 ```
 Equation:
-![Transform Function Equation][/images/eqn.png]
+![Transform Function Equation](images/eqn.png)
 
         

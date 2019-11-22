@@ -43,38 +43,39 @@ def simulate_rlc_response(C1, C2, R1, R2, RL, input_vec, time_vec):
     return t_out, y_out_vec
 
 
-def calculate_du1(C1, C2, R1, R2, RL, e_n, u1_n, u2_n):
-    return (1. / C1) * (1. / R1 * (e_n - u1_n) - 1. / R2 * (u1_n - u2_n))
+def calculate_du1(C1, C2, R1, R2, RL, e_n,
+                  u1_n, u2_n):
+    out = (1. / C1) * (1. / R1 * (e_n - u1_n) - 1. / R2 * (u1_n - u2_n))
+    return out
 
 
-def calculate_du2(C1, C2, R1, R2, RL, e_n, u1_n, u2_n):
-    return (1. / C2) * (1. / R2 * (u1_n - u2_n) - u2_n / RL)
+def calculate_du2(C1, C2, R1, R2, RL, e_n,
+                  u1_n, u2_n):
+    out = (1. / C2) * (1. / R2 * (u1_n - u2_n) - u2_n / RL)
+    return out
 
 
-def simulate_rlc_du1_response_euler(C1, C2, R1, R2, RL, input_vec, time_vec):
-    u1 = 1.
-    u2 = 1.
+def simulate_rlc_du1_response_euler(C1, C2, R1, R2, RL, input_vec, time_vec, frequency):
+    u1 = 0.
+    u2 = 0.
 
     u1_vec = np.zeros_like(time_vec)
     u2_vec = np.zeros_like(time_vec)
 
-    h = np.max(time_vec)/len(time_vec)
+    step = np.max(time_vec) / len(time_vec)
+    step = (time_vec[-1] - time_vec[0]) / len(time_vec)
+    print('h={} time_vec={} time_vec[0]={} time_vec[1]={}'.format(step, len(time_vec), time_vec[0], time_vec[1]))
+    dt = 0
     for idx in range(len(time_vec) - 1):
+        dt = dt + step
         u1_tmp = calculate_du1(C1, C2, R1, R2, RL, input_vec[idx], u1_vec[idx], u2_vec[idx])
         u2_tmp = calculate_du2(C1, C2, R1, R2, RL, input_vec[idx], u1_vec[idx], u2_vec[idx])
-        u1_vec[idx + 1] = u1_vec[idx] + h * u1_tmp
-        u2_vec[idx + 1] = u2_vec[idx] + h * u2_tmp
+        u1_vec[idx + 1] = u1_vec[idx] + step * u1_tmp
+        u2_vec[idx + 1] = u2_vec[idx] + step * u2_tmp
+
+    print('dt={}  t[idx]={}'.format(dt, time_vec[idx]))
 
     return time_vec, u2_vec
-    #
-    # system = signal.TransferFunction(
-    #     [0., 0., 1.],
-    #     [0, R1 * C1, 1.])
-    #
-    # t_out, y_out_vec, _ = signal.lsim(system, input_vec, time_vec)
-
-    return t_out, y_out_vec
-
 
 
 def generate_rlc_parameters():
@@ -90,7 +91,8 @@ def generate_rlc_parameters():
 def generate_time_vec(f):
     time = 0.001
     if f is not 0:
-        time = 3. / f
+        # TODO(KB): multiplying time cause some errors in Euler Method
+        time = 2. / f
 
     step = 0.001
     num = 1. / step
@@ -107,7 +109,9 @@ def generate_input_frequency_vecs():
     input_const_vec = (np.ones_like(time_vec) * e_t, f, time_vec)
 
     # b)
-    f = 50
+    # f = 50.
+    f = 122.5
+    e_t = 1.
     time_vec = generate_time_vec(f)
     input_f_50_vec = (np.sin(time_vec * period * f), f, time_vec)
 
@@ -133,7 +137,7 @@ def generate_input_frequency_vecs():
 
     # g)
     square_period = 0.5e-3
-    f = 1/square_period
+    f = 1 / square_period
     time_vec = generate_time_vec(f)
     input_f_square_4kHz_vec = (signal.square(time_vec * period * f), f, time_vec)
     input_vecs = [input_const_vec,
@@ -152,11 +156,11 @@ def main():
         t_out, y_out_vec = simulate_rlc_response(C1, C2, R1, R2, RL, input_vec, time_vec)
         plot_results('Simulated output', input_vec, frequency, t_out, y_out_vec)
 
-        t_out, y_out_vec = simulate_rlc_du1_response_euler(C1, C2, R1, R2, RL, input_vec, time_vec)
+        t_out, y_out_vec = simulate_rlc_du1_response_euler(C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
         plot_results('du1 output', input_vec, frequency, t_out, y_out_vec)
 
         # temporary
-        break
+        # break
 
 
 if __name__ == "__main__":

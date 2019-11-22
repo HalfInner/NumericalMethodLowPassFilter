@@ -21,13 +21,18 @@ class StaticFigureEnumerator:
     fig_num = 0
 
 
-def plot_results(title, input_vec, frequency, t_out, y_out_vec):
+def plot_results(title, input_vec, frequency, t_out, y_out_vecs : list):
     StaticFigureEnumerator.fig_num += 1
     plt.figure(StaticFigureEnumerator.fig_num / 2)
 
     s_to_ms_scalar = 1e3
     plt.plot(t_out * s_to_ms_scalar, input_vec, label='Input f={}Hz'.format(frequency))
-    plt.plot(t_out * s_to_ms_scalar, y_out_vec, label='Response')
+
+    idx = 0
+    for y_out_vec in y_out_vecs:
+        idx += 1
+        plt.plot(t_out * s_to_ms_scalar, y_out_vec, label='Response du{}'.format(idx))
+
     plt.ylim(bottom=-2.1, top=2.1)
     plt.xlabel('[ms]')
     plt.ylabel('[V]')
@@ -43,39 +48,43 @@ def simulate_rlc_response(C1, C2, R1, R2, RL, input_vec, time_vec):
     return t_out, y_out_vec
 
 
-def calculate_du1(C1, C2, R1, R2, RL, e_n,
-                  u1_n, u2_n):
+def calculate_du1(C1, C2, R1, R2, RL, e_n, u1_n, u2_n):
     out = (1. / C1) * (1. / R1 * (e_n - u1_n) - 1. / R2 * (u1_n - u2_n))
     return out
 
 
-def calculate_du2(C1, C2, R1, R2, RL, e_n,
-                  u1_n, u2_n):
+def calculate_du2(C1, C2, R1, R2, RL, e_n, u1_n, u2_n):
     out = (1. / C2) * (1. / R2 * (u1_n - u2_n) - u2_n / RL)
     return out
 
 
 def simulate_rlc_du1_response_euler(C1, C2, R1, R2, RL, input_vec, time_vec, frequency):
-    u1 = 0.
-    u2 = 0.
-
     u1_vec = np.zeros_like(time_vec)
     u2_vec = np.zeros_like(time_vec)
 
-    step = np.max(time_vec) / len(time_vec)
     step = (time_vec[-1] - time_vec[0]) / len(time_vec)
-    print('h={} time_vec={} time_vec[0]={} time_vec[1]={}'.format(step, len(time_vec), time_vec[0], time_vec[1]))
-    dt = 0
     for idx in range(len(time_vec) - 1):
-        dt = dt + step
         u1_tmp = calculate_du1(C1, C2, R1, R2, RL, input_vec[idx], u1_vec[idx], u2_vec[idx])
         u2_tmp = calculate_du2(C1, C2, R1, R2, RL, input_vec[idx], u1_vec[idx], u2_vec[idx])
         u1_vec[idx + 1] = u1_vec[idx] + step * u1_tmp
         u2_vec[idx + 1] = u2_vec[idx] + step * u2_tmp
 
-    print('dt={}  t[idx]={}'.format(dt, time_vec[idx]))
+    return time_vec, u1_vec, u2_vec
 
-    return time_vec, u2_vec
+
+def simulate_rlc_du1_response_extended_euler(C1, C2, R1, R2, RL, input_vec, time_vec, frequency):
+    u1_vec = np.zeros_like(time_vec)
+    u2_vec = np.zeros_like(time_vec)
+
+    step = (time_vec[-1] - time_vec[0]) / len(time_vec)
+    for idx in range(len(time_vec) - 1):
+        u1_tmp = calculate_du1(C1, C2, R1, R2, RL, input_vec[idx], u1_vec[idx], u2_vec[idx])
+        u2_tmp = calculate_du2(C1, C2, R1, R2, RL, input_vec[idx], u1_vec[idx], u2_vec[idx])
+        u1_vec[idx + 1] = u1_vec[idx] + step * u1_tmp
+        u2_vec[idx + 1] = u2_vec[idx] + step * u2_tmp
+
+    return time_vec, u1_vec, u2_vec
+
 
 
 def generate_rlc_parameters():
@@ -149,16 +158,30 @@ def generate_input_frequency_vecs():
                   input_f_square_4kHz_vec]
     return input_vecs
 
+#
+# def simulate_rlc_du1_il_response(C1, C2, R1, R2, RL, t_out, y_out_vec):
+#     # R=U/I
+#     # I = U/R
+#     R = R1 + R2
+#     il_vec = np.zeros_like(t_out)
+#
+#     for idx in range(len(y_out_vec)):
+#         il_vec[idx] = y_out_vec[idx] / R
+#
+#     return t_out, il_vec
+
 
 def main():
     C1, C2, R1, R2, RL = generate_rlc_parameters()
     for input_vec, frequency, time_vec in generate_input_frequency_vecs():
         t_out, y_out_vec = simulate_rlc_response(C1, C2, R1, R2, RL, input_vec, time_vec)
-        plot_results('Simulated output', input_vec, frequency, t_out, y_out_vec)
+        plot_results('Simulated output', input_vec, frequency, t_out, [y_out_vec])
 
-        t_out, y_out_vec = simulate_rlc_du1_response_euler(C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
-        plot_results('du1 output', input_vec, frequency, t_out, y_out_vec)
+        t_out, du1_out_vec, du2_out_vec = simulate_rlc_du1_response_euler(C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
+        plot_results('du1 output', input_vec, frequency, t_out, [du1_out_vec, du2_out_vec])
 
+        # t_il_out, y_il_out = simulate_rlc_du1_il_response(C1, C2, R1, R2, RL, t_out, du2_out_vec)
+        plot_results('I_l', input_vec, frequency, t_il_out, y_il_out)
         # temporary
         # break
 

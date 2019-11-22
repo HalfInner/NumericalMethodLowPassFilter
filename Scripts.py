@@ -21,7 +21,7 @@ class StaticFigureEnumerator:
     fig_num = 0
 
 
-def plot_results(title, input_vec, frequency, t_out, y_out_vecs : list):
+def plot_results(title, input_vec, frequency, t_out, y_out_vecs: list):
     StaticFigureEnumerator.fig_num += 1
     plt.figure(StaticFigureEnumerator.fig_num / 2)
 
@@ -80,11 +80,18 @@ def simulate_rlc_du1_response_extended_euler(C1, C2, R1, R2, RL, input_vec, time
     for idx in range(len(time_vec) - 1):
         u1_tmp = calculate_du1(C1, C2, R1, R2, RL, input_vec[idx], u1_vec[idx], u2_vec[idx])
         u2_tmp = calculate_du2(C1, C2, R1, R2, RL, input_vec[idx], u1_vec[idx], u2_vec[idx])
-        u1_vec[idx + 1] = u1_vec[idx] + step * u1_tmp
-        u2_vec[idx + 1] = u2_vec[idx] + step * u2_tmp
+
+        half_input = input_vec[idx] + step / 2.
+        half_u1 = u1_vec[idx] + step / 2 * u1_tmp
+        half_u2 = u2_vec[idx] + step / 2 * u2_tmp
+
+        main_u1_tmp = calculate_du1(C1, C2, R1, R2, RL, half_input, half_u1, half_u2)
+        main_u2_tmp = calculate_du2(C1, C2, R1, R2, RL, half_input, half_u1, half_u2)
+
+        u1_vec[idx + 1] = u1_vec[idx] + step * main_u1_tmp
+        u2_vec[idx + 1] = u2_vec[idx] + step * main_u2_tmp
 
     return time_vec, u1_vec, u2_vec
-
 
 
 def generate_rlc_parameters():
@@ -101,9 +108,9 @@ def generate_time_vec(f):
     time = 0.001
     if f is not 0:
         # TODO(KB): multiplying time cause some errors in Euler Method
-        time = 2. / f
+        time = 1. / f
 
-    step = 0.001
+    step = 0.01
     num = 1. / step
     return np.linspace(start=0, stop=time, num=num)
 
@@ -118,8 +125,7 @@ def generate_input_frequency_vecs():
     input_const_vec = (np.ones_like(time_vec) * e_t, f, time_vec)
 
     # b)
-    # f = 50.
-    f = 122.5
+    f = 50.
     e_t = 1.
     time_vec = generate_time_vec(f)
     input_f_50_vec = (np.sin(time_vec * period * f), f, time_vec)
@@ -149,6 +155,7 @@ def generate_input_frequency_vecs():
     f = 1 / square_period
     time_vec = generate_time_vec(f)
     input_f_square_4kHz_vec = (signal.square(time_vec * period * f), f, time_vec)
+
     input_vecs = [input_const_vec,
                   input_f_50_vec,
                   input_f_600_vec,
@@ -158,18 +165,6 @@ def generate_input_frequency_vecs():
                   input_f_square_4kHz_vec]
     return input_vecs
 
-#
-# def simulate_rlc_du1_il_response(C1, C2, R1, R2, RL, t_out, y_out_vec):
-#     # R=U/I
-#     # I = U/R
-#     R = R1 + R2
-#     il_vec = np.zeros_like(t_out)
-#
-#     for idx in range(len(y_out_vec)):
-#         il_vec[idx] = y_out_vec[idx] / R
-#
-#     return t_out, il_vec
-
 
 def main():
     C1, C2, R1, R2, RL = generate_rlc_parameters()
@@ -177,11 +172,14 @@ def main():
         t_out, y_out_vec = simulate_rlc_response(C1, C2, R1, R2, RL, input_vec, time_vec)
         plot_results('Simulated output', input_vec, frequency, t_out, [y_out_vec])
 
-        t_out, du1_out_vec, du2_out_vec = simulate_rlc_du1_response_euler(C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
-        plot_results('du1 output', input_vec, frequency, t_out, [du1_out_vec, du2_out_vec])
+        t_out, du1_out_vec, du2_out_vec = simulate_rlc_du1_response_euler(
+            C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
+        plot_results('euler', input_vec, frequency, t_out, [du1_out_vec, du2_out_vec])
 
-        # t_il_out, y_il_out = simulate_rlc_du1_il_response(C1, C2, R1, R2, RL, t_out, du2_out_vec)
-        plot_results('I_l', input_vec, frequency, t_il_out, y_il_out)
+        t_out, du1_out_vec, du2_out_vec = simulate_rlc_du1_response_extended_euler(
+            C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
+        plot_results('extended euler', input_vec, frequency, t_out, [du1_out_vec, du2_out_vec])
+
         # temporary
         # break
 

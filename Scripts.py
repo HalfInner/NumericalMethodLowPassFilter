@@ -166,22 +166,92 @@ def generate_input_frequency_vecs():
     return input_vecs
 
 
+def simulate_damping_ration(C1, C2, R1, R2, RL):
+    frequency_vec = np.arange(start=0, stop=2000, step=0.1)
+    frequency_damping_vec = np.zeros_like(frequency_vec)
+
+    for idx in range(len(frequency_vec)):
+        freq = frequency_vec[idx]
+        frequency_damping_vec[idx] = damping_value(C1, C2, R1, R2, RL, freq)
+
+    return frequency_vec, frequency_damping_vec
+
+
+def damping_value(C1, C2, R1, R2, RL, freq):
+    damping_ration_const = 0.7017
+
+    img_part = 1j * 2 * np.pi * freq
+
+    equal_up_c = 1. / (R1 * R2 * C1 * C2)
+    equal_down_s2 = img_part ** 2
+    equal_down_s1 = img_part * (1. / (R1 * C1) + 1. / (R2 * C1) + 1. / (R2 * C2))
+    equal_down_c = 1. / (R1 * R2 * C1 * C2)
+
+    equal = equal_up_c / (equal_down_s2 + equal_down_s1 + equal_down_c)
+
+    return damping_ration_const - np.abs(equal)
+
+
+def find_fc_bisection(C1, C2, R1, R2, RL):
+    freq_min = 0
+    freq_max = 3e3
+
+    epsilon = 0.0001
+    bisection_freq = float('inf')
+    bisection_gain = float('inf')
+    while bisection_gain > epsilon:
+        freq_avg = (freq_min + freq_max) / 2.
+        gain_avg = damping_value(C1, C2, R1, R2, RL, freq_avg)
+        gain_min = damping_value(C1, C2, R1, R2, RL, freq_min)
+        gain_max = damping_value(C1, C2, R1, R2, RL, freq_max)
+
+        is_positive_avg = gain_avg > 0.
+        is_positive_min = gain_min > 0.
+        is_positive_max = gain_max > 0.
+
+        if is_positive_min != is_positive_avg:
+            bisection_freq = (freq_min + freq_avg) / 2.
+            freq_max = freq_avg
+        elif is_positive_max != is_positive_avg:
+            bisection_freq = (freq_max + freq_avg) / 2.
+            freq_min = freq_avg
+        else:
+            raise Exception("Bisection was not able to find. Use larger range")
+
+        bisection_gain = damping_value(C1, C2, R1, R2, RL, bisection_freq)
+
+    return bisection_freq
+
+
 def main():
     C1, C2, R1, R2, RL = generate_rlc_parameters()
     for input_vec, frequency, time_vec in generate_input_frequency_vecs():
-        t_out, y_out_vec = simulate_rlc_response(C1, C2, R1, R2, RL, input_vec, time_vec)
-        plot_results('Simulated output', input_vec, frequency, t_out, [y_out_vec])
-
-        t_out, du1_out_vec, du2_out_vec = simulate_rlc_du1_response_euler(
-            C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
-        plot_results('euler', input_vec, frequency, t_out, [du1_out_vec, du2_out_vec])
+        # t_out, y_out_vec = simulate_rlc_response(C1, C2, R1, R2, RL, input_vec, time_vec)
+        # plot_results('Simulated output', input_vec, frequency, t_out, [y_out_vec])
+        #
+        # t_out, du1_out_vec, du2_out_vec = simulate_rlc_du1_response_euler(
+        #     C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
+        # plot_results('euler', input_vec, frequency, t_out, [du1_out_vec, du2_out_vec])
 
         t_out, du1_out_vec, du2_out_vec = simulate_rlc_du1_response_extended_euler(
             C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
         plot_results('extended euler', input_vec, frequency, t_out, [du1_out_vec, du2_out_vec])
 
         # temporary
-        # break
+        break
+
+    frequency_vec, frequency_damping_vec = simulate_damping_ration(C1, C2, R1, R2, RL)
+    plt.plot(frequency_vec, frequency_damping_vec, label='F(f)')
+
+    zero_gain = find_fc_bisection(C1, C2, R1, R2, RL)
+    plt.plot(zero_gain, 0., '.', label='bisection')
+
+    plt.xlabel('[Hz]')
+    plt.ylabel('[dB]')
+    plt.title('Gain threshold')
+    plt.legend()
+    plt.grid()
+    plt.show()
 
 
 if __name__ == "__main__":

@@ -167,7 +167,7 @@ def generate_input_frequency_vecs():
 
 
 def simulate_damping_ration(C1, C2, R1, R2, RL):
-    frequency_vec = np.arange(start=0, stop=2000, step=0.1)
+    frequency_vec = np.arange(start=-1000, stop=3000, step=0.1)
     frequency_damping_vec = np.zeros_like(frequency_vec)
 
     for idx in range(len(frequency_vec)):
@@ -223,6 +223,34 @@ def find_fc_bisection(C1, C2, R1, R2, RL):
     return bisection_freq
 
 
+def find_fc_tanget(C1, C2, R1, R2, RL):
+    freq_x0 = 3000
+
+    # frequency_vec, frequency_damping_vec = simulate_damping_ration(C1, C2, R1, R2, RL)
+    # derivative_frequency_vec = np.diff(frequency_damping_vec)
+
+    epsilon = 0.00001
+    tanget_freq_x0 = freq_x0
+    while True:
+        damping_freq_x0 = damping_value(C1, C2, R1, R2, RL, tanget_freq_x0)
+
+        freq_x_h = tanget_freq_x0 + epsilon
+
+        damping_freq_x_h = damping_value(C1, C2, R1, R2, RL, freq_x_h)
+
+        derivative_f_x = (damping_freq_x_h - damping_freq_x0) / epsilon
+
+        tanget_freq_x1 = tanget_freq_x0 - damping_freq_x0 / derivative_f_x
+
+        tanget_freq_x0 = tanget_freq_x1
+        if damping_value(C1, C2, R1, R2, RL, tanget_freq_x1) < epsilon:
+            break
+
+
+    print(tanget_freq_x0)
+    return tanget_freq_x0
+
+
 def main():
     C1, C2, R1, R2, RL = generate_rlc_parameters()
     for input_vec, frequency, time_vec in generate_input_frequency_vecs():
@@ -233,25 +261,28 @@ def main():
         #     C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
         # plot_results('euler', input_vec, frequency, t_out, [du1_out_vec, du2_out_vec])
 
-        t_out, du1_out_vec, du2_out_vec = simulate_rlc_du1_response_extended_euler(
-            C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
-        plot_results('extended euler', input_vec, frequency, t_out, [du1_out_vec, du2_out_vec])
+        # t_out, du1_out_vec, du2_out_vec = simulate_rlc_du1_response_extended_euler(
+        #     C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
+        # plot_results('extended euler', input_vec, frequency, t_out, [du1_out_vec, du2_out_vec])
 
         # temporary
         break
 
+    plt.figure(62626)
     frequency_vec, frequency_damping_vec = simulate_damping_ration(C1, C2, R1, R2, RL)
     plt.plot(frequency_vec, frequency_damping_vec, label='F(f)')
 
     zero_gain = find_fc_bisection(C1, C2, R1, R2, RL)
-    plt.plot(zero_gain, 0., '.', label='bisection')
-
+    plt.plot(zero_gain, 0., '.', label='bisection ({},{})'.format(zero_gain, 0))
     plt.xlabel('[Hz]')
     plt.ylabel('[dB]')
     plt.title('Gain threshold')
     plt.legend()
     plt.grid()
     plt.show()
+
+    res = find_fc_tanget(C1, C2, R1, R2, RL)
+
 
 
 if __name__ == "__main__":

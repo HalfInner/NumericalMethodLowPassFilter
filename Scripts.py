@@ -251,6 +251,33 @@ def find_fc_tanget(C1, C2, R1, R2, RL):
     return tanget_freq_x0
 
 
+def find_fc_newton(C1, C2, R1, R2, RL):
+    frequency_vec, frequency_damping_vec = simulate_damping_ration(C1, C2, R1, R2, RL)
+
+    freq_x0 = 3000
+
+    epsilon = 0.00001
+    tanget_freq_x0 = freq_x0
+    while True:
+        damping_freq_x0 = damping_value(C1, C2, R1, R2, RL, tanget_freq_x0)
+
+        freq_x_h = tanget_freq_x0 + epsilon
+
+        damping_freq_x_h = damping_value(C1, C2, R1, R2, RL, freq_x_h)
+
+        derivative_newton = (damping_freq_x_h - damping_freq_x0) / epsilon
+
+        tanget_freq_x1 = tanget_freq_x0 - damping_freq_x0 / derivative_newton
+
+        tanget_freq_x0 = tanget_freq_x1
+        if damping_value(C1, C2, R1, R2, RL, tanget_freq_x1) < epsilon:
+            break
+
+
+    print(tanget_freq_x0)
+    return tanget_freq_x0
+
+
 def main():
     C1, C2, R1, R2, RL = generate_rlc_parameters()
     for input_vec, frequency, time_vec in generate_input_frequency_vecs():
@@ -274,6 +301,10 @@ def main():
 
     zero_gain = find_fc_bisection(C1, C2, R1, R2, RL)
     plt.plot(zero_gain, 0., '.', label='bisection ({},{})'.format(zero_gain, 0))
+
+    zero_gain = find_fc_tanget(C1, C2, R1, R2, RL)
+    plt.plot(zero_gain, 0., '.', label='tangent ({:4.4},{})'.format(zero_gain, 0))
+
     plt.xlabel('[Hz]')
     plt.ylabel('[dB]')
     plt.title('Gain threshold')
@@ -283,6 +314,7 @@ def main():
 
     res = find_fc_tanget(C1, C2, R1, R2, RL)
 
+    plt.close('all')
 
 
 if __name__ == "__main__":

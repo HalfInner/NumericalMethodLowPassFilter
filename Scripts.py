@@ -235,7 +235,6 @@ def find_fc_tanget(C1, C2, R1, R2, RL):
         damping_freq_x0 = damping_value(C1, C2, R1, R2, RL, tanget_freq_x0)
 
         freq_x_h = tanget_freq_x0 + epsilon
-
         damping_freq_x_h = damping_value(C1, C2, R1, R2, RL, freq_x_h)
 
         derivative_f_x = (damping_freq_x_h - damping_freq_x0) / epsilon
@@ -245,7 +244,6 @@ def find_fc_tanget(C1, C2, R1, R2, RL):
         tanget_freq_x0 = tanget_freq_x1
         if damping_value(C1, C2, R1, R2, RL, tanget_freq_x1) < epsilon:
             break
-
 
     print(tanget_freq_x0)
     return tanget_freq_x0
@@ -261,11 +259,10 @@ def find_fc_newton(C1, C2, R1, R2, RL):
     while True:
         damping_freq_x0 = damping_value(C1, C2, R1, R2, RL, tanget_freq_x0)
 
-        freq_x_h = tanget_freq_x0 + epsilon
-
+        freq_x_h = tanget_freq_x0 - epsilon
         damping_freq_x_h = damping_value(C1, C2, R1, R2, RL, freq_x_h)
 
-        derivative_newton = (damping_freq_x_h - damping_freq_x0) / epsilon
+        derivative_newton = (damping_freq_x0 - damping_freq_x_h) / epsilon
 
         tanget_freq_x1 = tanget_freq_x0 - damping_freq_x0 / derivative_newton
 
@@ -273,38 +270,66 @@ def find_fc_newton(C1, C2, R1, R2, RL):
         if damping_value(C1, C2, R1, R2, RL, tanget_freq_x1) < epsilon:
             break
 
-
-    print(tanget_freq_x0)
     return tanget_freq_x0
+
+
+def bode_characteristic_value(C1, C2, R1, R2, RL, freq):
+    bode_scalar = 20
+
+    img_part = 1j * 2 * np.pi * freq
+
+    equal_up_c = 1. / (R1 * R2 * C1 * C2)
+    equal_down_s2 = img_part ** 2
+    equal_down_s1 = img_part * (1. / (R1 * C1) + 1. / (R2 * C1) + 1. / (R2 * C2))
+    equal_down_c = 1. / (R1 * R2 * C1 * C2)
+
+    equal = equal_up_c / (equal_down_s2 + equal_down_s1 + equal_down_c)
+
+    return bode_scalar * np.log10(np.abs(equal))
+
+
+def plot_g(R1, R2, C1, C2, Rl, fmin, fmax):
+    frequency_vec = np.arange(start=fmin, stop=fmax, step=100)
+    ratio_vec = np.zeros_like(frequency_vec)
+
+    idx = 0
+    for idx in range(len(frequency_vec)):
+        ratio_vec[idx] = bode_characteristic_value(R1, R2, C1, C2, Rl, frequency_vec[idx])
+
+    plt.plot(frequency_vec, ratio_vec, label="Bode characteristic 20log_10")
+    plt.xlabel('[Hz]')
+    plt.ylabel('[dB]')
+    plt.xscale('log')
+    plt.xlim(fmin, fmax)
+    plt.title('Bode plot')
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+    pass
 
 
 def main():
     C1, C2, R1, R2, RL = generate_rlc_parameters()
-    for input_vec, frequency, time_vec in generate_input_frequency_vecs():
-        # t_out, y_out_vec = simulate_rlc_response(C1, C2, R1, R2, RL, input_vec, time_vec)
-        # plot_results('Simulated output', input_vec, frequency, t_out, [y_out_vec])
-        #
-        # t_out, du1_out_vec, du2_out_vec = simulate_rlc_du1_response_euler(
-        #     C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
-        # plot_results('euler', input_vec, frequency, t_out, [du1_out_vec, du2_out_vec])
+    # part_no_1(C1, C2, R1, R2, RL)
+    # part_no_2(C1, C2, R1, R2, RL)
+    fmin = 1
+    fmax = 10e6
+    plot_g(R1, R2, C1, C2, RL, fmin, fmax)
 
-        # t_out, du1_out_vec, du2_out_vec = simulate_rlc_du1_response_extended_euler(
-        #     C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
-        # plot_results('extended euler', input_vec, frequency, t_out, [du1_out_vec, du2_out_vec])
+    plt.close('all')
 
-        # temporary
-        break
 
+def part_no_2(C1, C2, R1, R2, RL):
     plt.figure(62626)
     frequency_vec, frequency_damping_vec = simulate_damping_ration(C1, C2, R1, R2, RL)
     plt.plot(frequency_vec, frequency_damping_vec, label='F(f)')
-
     zero_gain = find_fc_bisection(C1, C2, R1, R2, RL)
-    plt.plot(zero_gain, 0., '.', label='bisection ({},{})'.format(zero_gain, 0))
-
+    plt.plot(zero_gain, 0., '.', label='bisection ({:4.10},{})'.format(zero_gain, 0))
     zero_gain = find_fc_tanget(C1, C2, R1, R2, RL)
-    plt.plot(zero_gain, 0., '.', label='tangent ({:4.4},{})'.format(zero_gain, 0))
-
+    plt.plot(zero_gain, 0., '.', label='tangent ({:4.10},{})'.format(zero_gain, 0))
+    zero_gain = find_fc_newton(C1, C2, R1, R2, RL)
+    plt.plot(zero_gain, 0., '.', label='newton ({:4.10},{})'.format(zero_gain, 0))
     plt.xlabel('[Hz]')
     plt.ylabel('[dB]')
     plt.title('Gain threshold')
@@ -312,9 +337,22 @@ def main():
     plt.grid()
     plt.show()
 
-    res = find_fc_tanget(C1, C2, R1, R2, RL)
 
-    plt.close('all')
+def part_no_1(C1, C2, R1, R2, RL):
+    for input_vec, frequency, time_vec in generate_input_frequency_vecs():
+        t_out, y_out_vec = simulate_rlc_response(C1, C2, R1, R2, RL, input_vec, time_vec)
+        plot_results('Simulated output', input_vec, frequency, t_out, [y_out_vec])
+
+        t_out, du1_out_vec, du2_out_vec = simulate_rlc_du1_response_euler(
+            C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
+        plot_results('euler', input_vec, frequency, t_out, [du1_out_vec, du2_out_vec])
+
+        t_out, du1_out_vec, du2_out_vec = simulate_rlc_du1_response_extended_euler(
+            C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
+        plot_results('extended euler', input_vec, frequency, t_out, [du1_out_vec, du2_out_vec])
+
+        # uncomment use for debug
+        # break
 
 
 if __name__ == "__main__":

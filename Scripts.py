@@ -223,6 +223,39 @@ def find_fc_bisection(C1, C2, R1, R2, RL):
     return bisection_freq
 
 
+def find_bode_bisection(C1, C2, R1, R2, RL, seek_damping_value):
+    freq_min = 0
+    freq_max = 10e7
+
+    epsilon = 0.0001
+    bisection_freq = float('inf')
+    bisection_gain = float('inf')
+
+    while bisection_gain > epsilon:
+        freq_avg = (freq_min + freq_max) / 2.
+
+        gain_max = seek_damping_value - bode_characteristic_value(C1, C2, R1, R2, RL, freq_max)
+        gain_avg = seek_damping_value - bode_characteristic_value(C1, C2, R1, R2, RL, freq_avg)
+        gain_min = seek_damping_value - bode_characteristic_value(C1, C2, R1, R2, RL, freq_min)
+
+        is_positive_avg = gain_avg > 0.
+        is_positive_min = gain_min > 0.
+        is_positive_max = gain_max > 0.
+
+        if is_positive_min != is_positive_avg:
+            bisection_freq = (freq_min + freq_avg) / 2.
+            freq_max = freq_avg
+        elif is_positive_max != is_positive_avg:
+            bisection_freq = (freq_max + freq_avg) / 2.
+            freq_min = freq_avg
+        else:
+            raise Exception("Bisection was not able to find. Use larger range")
+
+        bisection_gain = seek_damping_value - bode_characteristic_value(C1, C2, R1, R2, RL, bisection_freq)
+
+    return bisection_freq
+
+
 def find_fc_tanget(C1, C2, R1, R2, RL):
     freq_x0 = 3000
 
@@ -230,23 +263,23 @@ def find_fc_tanget(C1, C2, R1, R2, RL):
     # derivative_frequency_vec = np.diff(frequency_damping_vec)
 
     epsilon = 0.00001
-    tanget_freq_x0 = freq_x0
+    tangent_freq_x0 = freq_x0
     while True:
-        damping_freq_x0 = damping_value(C1, C2, R1, R2, RL, tanget_freq_x0)
+        damping_freq_x0 = damping_value(C1, C2, R1, R2, RL, tangent_freq_x0)
 
-        freq_x_h = tanget_freq_x0 + epsilon
+        freq_x_h = tangent_freq_x0 + epsilon
         damping_freq_x_h = damping_value(C1, C2, R1, R2, RL, freq_x_h)
 
         derivative_f_x = (damping_freq_x_h - damping_freq_x0) / epsilon
 
-        tanget_freq_x1 = tanget_freq_x0 - damping_freq_x0 / derivative_f_x
+        tanget_freq_x1 = tangent_freq_x0 - damping_freq_x0 / derivative_f_x
 
-        tanget_freq_x0 = tanget_freq_x1
+        tangent_freq_x0 = tanget_freq_x1
         if damping_value(C1, C2, R1, R2, RL, tanget_freq_x1) < epsilon:
             break
 
-    print(tanget_freq_x0)
-    return tanget_freq_x0
+    print(tangent_freq_x0)
+    return tangent_freq_x0
 
 
 def find_fc_newton(C1, C2, R1, R2, RL):
@@ -255,22 +288,22 @@ def find_fc_newton(C1, C2, R1, R2, RL):
     freq_x0 = 3000
 
     epsilon = 0.00001
-    tanget_freq_x0 = freq_x0
+    tangent_freq_x0 = freq_x0
     while True:
-        damping_freq_x0 = damping_value(C1, C2, R1, R2, RL, tanget_freq_x0)
+        damping_freq_x0 = damping_value(C1, C2, R1, R2, RL, tangent_freq_x0)
 
-        freq_x_h = tanget_freq_x0 - epsilon
+        freq_x_h = tangent_freq_x0 - epsilon
         damping_freq_x_h = damping_value(C1, C2, R1, R2, RL, freq_x_h)
 
         derivative_newton = (damping_freq_x0 - damping_freq_x_h) / epsilon
 
-        tanget_freq_x1 = tanget_freq_x0 - damping_freq_x0 / derivative_newton
+        tanget_freq_x1 = tangent_freq_x0 - damping_freq_x0 / derivative_newton
 
-        tanget_freq_x0 = tanget_freq_x1
+        tangent_freq_x0 = tanget_freq_x1
         if damping_value(C1, C2, R1, R2, RL, tanget_freq_x1) < epsilon:
             break
 
-    return tanget_freq_x0
+    return tangent_freq_x0
 
 
 def bode_characteristic_value(C1, C2, R1, R2, RL, freq):
@@ -292,15 +325,18 @@ def plot_g(R1, R2, C1, C2, Rl, fmin, fmax):
     frequency_vec = np.arange(start=fmin, stop=fmax, step=100)
     ratio_vec = np.zeros_like(frequency_vec)
 
-    idx = 0
     for idx in range(len(frequency_vec)):
         ratio_vec[idx] = bode_characteristic_value(R1, R2, C1, C2, Rl, frequency_vec[idx])
-
     plt.plot(frequency_vec, ratio_vec, label="Bode characteristic 20log_10")
+
+    seek_damping_value = -3
+    zero_gain = find_bode_bisection(R1, R2, C1, C2, Rl, seek_damping_value)
+    plt.plot(zero_gain, seek_damping_value, '.', label='damping value {:4.2}'.format(zero_gain, 0))
+
     plt.xlabel('[Hz]')
     plt.ylabel('[dB]')
     plt.xscale('log')
-    plt.xlim(fmin, fmax)
+    # plt.xlim(fmin, fmax)
     plt.title('Bode plot')
     plt.legend()
     plt.grid()
@@ -313,11 +349,15 @@ def main():
     C1, C2, R1, R2, RL = generate_rlc_parameters()
     # part_no_1(C1, C2, R1, R2, RL)
     # part_no_2(C1, C2, R1, R2, RL)
+    part_no_3(C1, C2, R1, R2, RL)
+
+    plt.close('all')
+
+
+def part_no_3(C1, C2, R1, R2, RL):
     fmin = 1
     fmax = 10e6
     plot_g(R1, R2, C1, C2, RL, fmin, fmax)
-
-    plt.close('all')
 
 
 def part_no_2(C1, C2, R1, R2, RL):

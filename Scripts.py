@@ -422,7 +422,7 @@ def part_no_4(C1, C2, R1, R2, RL):
 
     print('Rect')
     for h in [h_steps['h_rect_short'], h_steps['h_rect_long']]:
-        for input_vec, frequency, time_vec in generate_input_frequency_vecs(h=h, t=0.001):
+        for input_vec, frequency, time_vec in generate_input_frequency_vecs(h=h, t=0.060):
             t_out, _, y_out_vec = simulate_rlc_du1_response_extended_euler(
                 C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
 
@@ -431,11 +431,11 @@ def part_no_4(C1, C2, R1, R2, RL):
             circut_heat = simulate_heat_rect(RL_heat, y_out_vec, h)
             print('f={} h={} heat={}'.format(frequency, h, circut_heat))
             plt.plot(0, 0, label='Circut heat P={}'.format(circut_heat))
-            return
+
 
     print('Parabola')
     for h in [h_steps['h_parabola_short'], h_steps['h_parabola_long']]:
-        for input_vec, frequency, time_vec in generate_input_frequency_vecs(h=h, t=0.001):
+        for input_vec, frequency, time_vec in generate_input_frequency_vecs(h=h, t=0.060):
             t_out, _, y_out_vec = simulate_rlc_du1_response_extended_euler(
                 C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
 
@@ -449,9 +449,9 @@ def part_no_4(C1, C2, R1, R2, RL):
 
 def main():
     C1, C2, R1, R2, RL = generate_rlc_parameters()
-    # part_no_1(C1, C2, R1, R2, RL)
-    # part_no_2(C1, C2, R1, R2, RL)
-    # part_no_3(C1, C2, R1, R2, RL)
+    part_no_1(C1, C2, R1, R2, RL)
+    part_no_2(C1, C2, R1, R2, RL)
+    part_no_3(C1, C2, R1, R2, RL)
     part_no_4(C1, C2, R1, R2, RL)
 
     plt.close('all')

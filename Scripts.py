@@ -104,65 +104,75 @@ def generate_rlc_parameters():
     return C1, C2, R1, R2, RL
 
 
-def generate_time_vec(f):
-    time = 0.001
+def generate_time_vec(f, h, t=0.001):
+    time = t
     if f is not 0:
         # TODO(KB): multiplying time cause some errors in Euler Method
         time = 1. / f
 
-    step = 0.01
+    step = h
     num = 1. / step
     return np.linspace(start=0, stop=time, num=num)
 
 
-def generate_input_frequency_vecs():
+def generate_input_frequency_vecs(h=0.01, t=0.001):
     period = 2 * np.pi
+
+    # test)
+    f = 0
+    e_t = 1.
+    time_vec = generate_time_vec(f, h, t)
+    # if abs(steps - h) > 0.001:
+    #     raise Exception('Passed h={} is different from returned steps={}'.format(h, steps))
+    input_const_test_vec = (np.ones_like(time_vec) * e_t, f, time_vec)
 
     # a)
     f = 0
     e_t = 2.
-    time_vec = generate_time_vec(f)
+    time_vec = generate_time_vec(f, h)
     input_const_vec = (np.ones_like(time_vec) * e_t, f, time_vec)
 
     # b)
     f = 50.
-    e_t = 1.
-    time_vec = generate_time_vec(f)
+    time_vec = generate_time_vec(f, h)
     input_f_50_vec = (np.sin(time_vec * period * f), f, time_vec)
 
     # c)
     f = 600
-    time_vec = generate_time_vec(f)
+    time_vec = generate_time_vec(f, h)
     input_f_600_vec = (np.sin(time_vec * period * f), f, time_vec)
 
     # d)
     f = 1.75e3
-    time_vec = generate_time_vec(f)
+    time_vec = generate_time_vec(f, h)
     input_f_1_75k_vec = (np.sin(time_vec * period * f), f, time_vec)
 
     # e)
     f = 12e3
-    time_vec = generate_time_vec(f)
+    time_vec = generate_time_vec(f, h)
     input_f_12k_vec = (np.sin(time_vec * period * f), f, time_vec)
 
     # f)
     f = 21e3
-    time_vec = generate_time_vec(f)
+    time_vec = generate_time_vec(f, h)
     input_f_21k_vec = (np.sin(time_vec * period * f), f, time_vec)
 
     # g)
     square_period = 0.5e-3
     f = 1 / square_period
-    time_vec = generate_time_vec(f)
-    input_f_square_4kHz_vec = (signal.square(time_vec * period * f), f, time_vec)
+    time_vec = generate_time_vec(f, h)
+    input_f_square_4kHz_vec = (signal.square(time_vec * period * f) + 1, f, time_vec)
 
-    input_vecs = [input_const_vec,
-                  input_f_50_vec,
-                  input_f_600_vec,
-                  input_f_1_75k_vec,
-                  input_f_12k_vec,
-                  input_f_21k_vec,
-                  input_f_square_4kHz_vec]
+    input_vecs = [
+        input_const_test_vec,
+        input_const_vec,
+        input_f_50_vec,
+        input_f_600_vec,
+        input_f_1_75k_vec,
+        input_f_12k_vec,
+        input_f_21k_vec,
+        input_f_square_4kHz_vec
+    ]
     return input_vecs
 
 
@@ -283,8 +293,6 @@ def find_fc_tanget(C1, C2, R1, R2, RL):
 
 
 def find_fc_newton(C1, C2, R1, R2, RL):
-    frequency_vec, frequency_damping_vec = simulate_damping_ration(C1, C2, R1, R2, RL)
-
     freq_x0 = 3000
 
     epsilon = 0.00001
@@ -336,22 +344,13 @@ def plot_g(R1, R2, C1, C2, Rl, fmin, fmax):
     plt.xlabel('[Hz]')
     plt.ylabel('[dB]')
     plt.xscale('log')
-    # plt.xlim(fmin, fmax)
+    plt.xlim(fmin, fmax)
     plt.title('Bode plot')
     plt.legend()
     plt.grid()
     plt.show()
 
     pass
-
-
-def main():
-    C1, C2, R1, R2, RL = generate_rlc_parameters()
-    # part_no_1(C1, C2, R1, R2, RL)
-    # part_no_2(C1, C2, R1, R2, RL)
-    part_no_3(C1, C2, R1, R2, RL)
-
-    plt.close('all')
 
 
 def part_no_3(C1, C2, R1, R2, RL):
@@ -393,6 +392,49 @@ def part_no_1(C1, C2, R1, R2, RL):
 
         # uncomment use for debug
         # break
+
+
+def simulate_heat(RL: float, du2_vec, h):
+    print('h=', h)
+    h_v = np.max(du2_vec) / len(du2_vec)
+    print('h_v=', h_v)
+    heat_sum = np.sum(du2_vec)
+    heat = heat_sum * (h / RL)
+    heat_v = heat_sum * (h_v / RL)
+    print('({:E}, {:E})'.format(heat, heat_v))
+    return heat
+
+
+def part_no_4(C1, C2, R1, R2, RL):
+    h_steps = {
+        'h_rect_short': 0.000001,
+        'h_rect_long': 0.04,
+        'h_parabola_short': 0.01,
+        'h_parabola_long': 0.01
+    }
+    h = h_steps['h_rect_short']
+    for input_vec, frequency, time_vec in generate_input_frequency_vecs(h=h, t=0.001):
+        t_out, _, y_out_vec = simulate_rlc_du1_response_extended_euler(
+            C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
+
+        # t_out, y_out_vec = simulate_rlc_response(C1, C2, R1, R2, RL, input_vec, time_vec)
+        RL_heat = 1e3
+        circut_heat = simulate_heat(RL_heat, y_out_vec, h)
+        plt.plot(0, 0, label='Circut heat P={}'.format(circut_heat))
+        plot_results('extended euler', input_vec, frequency, t_out, [y_out_vec, ])
+
+        break
+    pass
+
+
+def main():
+    C1, C2, R1, R2, RL = generate_rlc_parameters()
+    part_no_1(C1, C2, R1, R2, RL)
+    # part_no_2(C1, C2, R1, R2, RL)
+    # part_no_3(C1, C2, R1, R2, RL)
+    # part_no_4(C1, C2, R1, R2, RL)
+
+    plt.close('all')
 
 
 if __name__ == "__main__":

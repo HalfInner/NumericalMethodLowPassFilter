@@ -112,7 +112,6 @@ def generate_rlc_parameters():
 def generate_time_vec(f, h, t=0.001):
     time = t
     if f is not 0:
-        # TODO(KB): multiplying time cause some errors in Euler Method
         time = 1. / f
 
     step = h
@@ -127,8 +126,6 @@ def generate_input_frequency_vecs(h=0.01, t=0.001):
     f = 0
     e_t = 1.
     time_vec = generate_time_vec(f, h, t)
-    # if abs(steps - h) > 0.001:
-    #     raise Exception('Passed h={} is different from returned steps={}'.format(h, steps))
     input_const_test_vec = (np.ones_like(time_vec) * e_t, f, time_vec)
 
     # a)
@@ -391,8 +388,6 @@ def part_no_1(C1, C2, R1, R2, RL):
         t_out, du1_out_vec, du2_out_vec = simulate_rlc_du1_response_extended_euler(
             C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
         plot_results('extended euler', input_vec, frequency, t_out, [du1_out_vec, du2_out_vec])
-        # uncomment use for debug
-        # break
 
 
 def simulate_heat_rect(RL: float, du2_vec, h):
@@ -439,10 +434,9 @@ def part_no_4(C1, C2, R1, R2, RL):
             t_out, _, y_out_vec = simulate_rlc_du1_response_extended_euler(
                 C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
 
-            # t_out, y_out_vec = simulate_rlc_response(C1, C2, R1, R2, RL, input_vec, time_vec)
             RL_heat = 1e3
             circut_heat = simulate_heat_parabol(RL_heat, y_out_vec, h)
-            print('PARABOL: f={} h={} heat={}'.format(frequency, h, circut_heat))
+            print('f={} h={} heat={}'.format(frequency, h, circut_heat))
             plt.plot(0, 0, label='Circut heat P={}'.format(circut_heat))
 
     plt.show()

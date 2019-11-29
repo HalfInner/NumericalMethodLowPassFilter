@@ -1,6 +1,8 @@
 # import control as control
 import matplotlib.pyplot as plt
 import numpy as np
+import math
+
 from scipy import signal
 
 
@@ -31,6 +33,8 @@ def plot_results(title, input_vec, frequency, t_out, y_out_vecs: list):
     idx = 0
     for y_out_vec in y_out_vecs:
         idx += 1
+        if y_out_vec is None:
+            continue
         plt.plot(t_out * s_to_ms_scalar, y_out_vec, label='Response du{}'.format(idx))
 
     plt.ylim(bottom=-2.1, top=2.1)
@@ -39,6 +43,7 @@ def plot_results(title, input_vec, frequency, t_out, y_out_vecs: list):
     plt.title(title)
     plt.legend()
     plt.grid()
+    plt.savefig('{:02}_f{}.png'.format(StaticFigureEnumerator.fig_num, frequency), bbox_inches='tight')
     plt.show()
 
 
@@ -269,9 +274,6 @@ def find_bode_bisection(C1, C2, R1, R2, RL, seek_damping_value):
 def find_fc_tanget(C1, C2, R1, R2, RL):
     freq_x0 = 3000
 
-    # frequency_vec, frequency_damping_vec = simulate_damping_ration(C1, C2, R1, R2, RL)
-    # derivative_frequency_vec = np.diff(frequency_damping_vec)
-
     epsilon = 0.00001
     tangent_freq_x0 = freq_x0
     while True:
@@ -378,9 +380,9 @@ def part_no_2(C1, C2, R1, R2, RL):
 
 
 def part_no_1(C1, C2, R1, R2, RL):
-    for input_vec, frequency, time_vec in generate_input_frequency_vecs():
+    for input_vec, frequency, time_vec in generate_input_frequency_vecs(h=0.001, t=0.001):
         t_out, y_out_vec = simulate_rlc_response(C1, C2, R1, R2, RL, input_vec, time_vec)
-        plot_results('Simulated output', input_vec, frequency, t_out, [y_out_vec])
+        plot_results('Simulated output', input_vec, frequency, t_out, [None, y_out_vec])
 
         t_out, du1_out_vec, du2_out_vec = simulate_rlc_du1_response_euler(
             C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
@@ -389,50 +391,68 @@ def part_no_1(C1, C2, R1, R2, RL):
         t_out, du1_out_vec, du2_out_vec = simulate_rlc_du1_response_extended_euler(
             C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
         plot_results('extended euler', input_vec, frequency, t_out, [du1_out_vec, du2_out_vec])
-
         # uncomment use for debug
         # break
 
 
-def simulate_heat(RL: float, du2_vec, h):
-    print('h=', h)
-    h_v = np.max(du2_vec) / len(du2_vec)
-    print('h_v=', h_v)
+def simulate_heat_rect(RL: float, du2_vec, h):
     heat_sum = np.sum(du2_vec)
     heat = heat_sum * (h / RL)
-    heat_v = heat_sum * (h_v / RL)
-    print('({:E}, {:E})'.format(heat, heat_v))
     return heat
+
+
+def simulate_heat_parabol(RL: float, du2_vec, h):
+    heat_rec_sum = simulate_heat_rect(RL, du2_vec, h)
+
+    heat_rec_triangle_no_scalar = 0
+    for idx in range(len(du2_vec) - 1):
+        heat_rec_triangle_no_scalar += np.abs(du2_vec[idx] - du2_vec[idx + 1])
+    heat_rec_triangle = heat_rec_triangle_no_scalar * h / (2 * RL)
+
+    return heat_rec_sum + heat_rec_triangle
 
 
 def part_no_4(C1, C2, R1, R2, RL):
     h_steps = {
         'h_rect_short': 0.000001,
-        'h_rect_long': 0.04,
-        'h_parabola_short': 0.01,
-        'h_parabola_long': 0.01
+        'h_rect_long': 0.001,
+        'h_parabola_short': 0.000001,
+        'h_parabola_long': 0.001
     }
-    h = h_steps['h_rect_short']
-    for input_vec, frequency, time_vec in generate_input_frequency_vecs(h=h, t=0.001):
-        t_out, _, y_out_vec = simulate_rlc_du1_response_extended_euler(
-            C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
 
-        # t_out, y_out_vec = simulate_rlc_response(C1, C2, R1, R2, RL, input_vec, time_vec)
-        RL_heat = 1e3
-        circut_heat = simulate_heat(RL_heat, y_out_vec, h)
-        plt.plot(0, 0, label='Circut heat P={}'.format(circut_heat))
-        plot_results('extended euler', input_vec, frequency, t_out, [y_out_vec, ])
+    print('Rect')
+    for h in [h_steps['h_rect_short'], h_steps['h_rect_long']]:
+        for input_vec, frequency, time_vec in generate_input_frequency_vecs(h=h, t=0.001):
+            t_out, _, y_out_vec = simulate_rlc_du1_response_extended_euler(
+                C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
 
-        break
-    pass
+            # t_out, y_out_vec = simulate_rlc_response(C1, C2, R1, R2, RL, input_vec, time_vec)
+            RL_heat = 1e3
+            circut_heat = simulate_heat_rect(RL_heat, y_out_vec, h)
+            print('f={} h={} heat={}'.format(frequency, h, circut_heat))
+            plt.plot(0, 0, label='Circut heat P={}'.format(circut_heat))
+            return
 
+    print('Parabola')
+    for h in [h_steps['h_parabola_short'], h_steps['h_parabola_long']]:
+        for input_vec, frequency, time_vec in generate_input_frequency_vecs(h=h, t=0.001):
+            t_out, _, y_out_vec = simulate_rlc_du1_response_extended_euler(
+                C1, C2, R1, R2, RL, input_vec, time_vec, frequency)
+
+            # t_out, y_out_vec = simulate_rlc_response(C1, C2, R1, R2, RL, input_vec, time_vec)
+            RL_heat = 1e3
+            circut_heat = simulate_heat_parabol(RL_heat, y_out_vec, h)
+            print('PARABOL: f={} h={} heat={}'.format(frequency, h, circut_heat))
+            plt.plot(0, 0, label='Circut heat P={}'.format(circut_heat))
+
+    plt.show()
 
 def main():
     C1, C2, R1, R2, RL = generate_rlc_parameters()
-    part_no_1(C1, C2, R1, R2, RL)
+    # part_no_1(C1, C2, R1, R2, RL)
     # part_no_2(C1, C2, R1, R2, RL)
     # part_no_3(C1, C2, R1, R2, RL)
-    # part_no_4(C1, C2, R1, R2, RL)
+    part_no_4(C1, C2, R1, R2, RL)
 
     plt.close('all')
 

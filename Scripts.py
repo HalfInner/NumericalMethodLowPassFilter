@@ -1,5 +1,5 @@
 # import control as control
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plT
 import numpy as np
 import math
 
@@ -448,8 +448,6 @@ def main():
     part_no_3(C1, C2, R1, R2, RL)
     part_no_4(C1, C2, R1, R2, RL)
 
-    print('Author: Kajetan Brzuszczak\n'
-          'OKNO 301023')
     plt.close('all')
 
 
